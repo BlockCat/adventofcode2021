@@ -15,7 +15,7 @@ fn input(b: &mut Bencher) {
 }
 
 #[bench]
-fn ex1_normal(b: &mut Bencher) {
+fn d02_ex1_normal(b: &mut Bencher) {
     let numbers = include_str!("../input/day02.txt")
         .lines()
         .map(|x| to_direction(x))
@@ -31,7 +31,7 @@ fn ex1_normal(b: &mut Bencher) {
 }
 
 #[bench]
-fn ex2_normal(b: &mut Bencher) {
+fn d02_ex2_normal(b: &mut Bencher) {
     let numbers = include_str!("../input/day02.txt")
         .lines()
         .map(|x| to_direction(x))
