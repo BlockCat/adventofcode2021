@@ -62,6 +62,14 @@ where
         }
     }
 
+    pub fn from_slice(width: usize, height: usize, slice: Vec<T>) -> StaticGrid<T> {
+        StaticGrid {
+            width,
+            height,
+            grid: slice,
+        }
+    }
+
     pub fn from_vec(grid: Vec<Vec<T>>) -> StaticGrid<T> {
         let width = grid[0].len();
         let height = grid.len();

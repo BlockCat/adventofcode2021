@@ -1,9 +1,5 @@
 #![feature(test, portable_simd)]
-
-use std::{
-    ops::{Add, BitAnd, BitXor},
-    simd::{i16x16, u16x16},
-};
+use std::{ simd::{i16x16, u16x16} };
 
 const ONES: i16x16 = i16x16::from_array([0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
 
@@ -18,6 +14,7 @@ pub fn main() {
 }
 
 fn decode_binary(line: &str) -> u16x16 {
+
     let prepend = 16 - line.len();
     let mut values = vec![0u16; prepend];
     values.extend(line.chars().map(|c| match c {
@@ -25,21 +22,17 @@ fn decode_binary(line: &str) -> u16x16 {
         '0' => 0,
         _ => unreachable!(),
     }));
-
     u16x16::from_slice(&values)
 }
 
-//4354014
-//4245351
 fn exercise_1(numbers: &Vec<u16x16>) -> usize {
     let number_len = numbers.len() as u16;
     let number_len = u16x16::splat(number_len / 2);
 
     let sum = count_lanes(&numbers);
 
-    let a = -sum.lanes_le(number_len).to_int();
-    let a = a.bitand(ONES);
-    let b = a.bitxor(ONES);
+    let a = (-sum.lanes_le(number_len).to_int()) & ONES;    
+    let b = a ^ ONES;
 
     i16x16_to_u16(a) * i16x16_to_u16(b)
 }
@@ -49,18 +42,18 @@ fn count_lanes(numbers: &[u16x16]) -> u16x16 {
 }
 
 fn exercise_2(numbers: &Vec<u16x16>) -> usize {
-    let a = find_vlaue(
+    let a = find_value(
         numbers.clone(),
-        |zeros, ones| if zeros > ones { 0 } else { 1 },
+        |zeros, ones| (zeros <= ones) as u16,
     );
-    let b = find_vlaue(
+    let b = find_value(
         numbers.clone(),
-        |zeros, ones| if zeros > ones { 1 } else { 0 },
+        |zeros, ones| (zeros > ones) as u16,
     );    
     a * b
 }
 
-fn find_vlaue<T>(mut numbers: Vec<u16x16>, pred: T) -> usize
+fn find_value<T>(mut numbers: Vec<u16x16>, pred: T) -> usize
 where
     T: Fn(u16, u16) -> u16,
 {
@@ -76,9 +69,6 @@ where
             .collect();
         counter += 1;
     }
-
-    assert!(numbers.len() == 1);
-
     u16x16_to_u16(numbers[0])
 }
 
