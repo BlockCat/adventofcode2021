@@ -77,19 +77,16 @@ fn exercise_2((chosen, mut boards): Input) -> usize {
 
 #[derive(Clone, PartialEq, Eq)]
 struct Board {
-    map: HashMap<u8, usize>,
-    unmarked: HashSet<u8>,
+    map: HashMap<u8, usize>,    
     cols: [u8; 5],
     rows: [u8; 5],
 }
 
 impl Board {
     pub fn new(slice: Vec<u8>) -> Self {
-        let map = slice.iter().enumerate().map(|x| (*x.1, x.0)).collect();
-        let unmarked = slice.iter().cloned().collect();
+        let map = slice.iter().enumerate().map(|x| (*x.1, x.0)).collect();        
         Self {
             map,
-            unmarked,
             cols: [0; 5],
             rows: [0; 5],
         }
@@ -101,7 +98,7 @@ impl Board {
             let col = index % 5;
             self.cols[col] += 1;
             self.rows[row] += 1;
-            self.unmarked.remove(&number);
+            self.map.remove(&number);
         }
     }
 
@@ -110,6 +107,6 @@ impl Board {
     }
 
     pub fn win_value(&self) -> usize {
-        self.unmarked.iter().map(|x| *x as usize).sum()
+        self.map.keys().map(|x| *x as usize).sum()
     }
 }

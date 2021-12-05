@@ -27,6 +27,6 @@ fn d04_ex2_normal(b: &mut Bencher) {
 // test d04_input      ... bench:     302,455 ns/iter (+/- 5,978)
 
 // Version 2
-// test d04_ex1_normal ... bench:      66,526 ns/iter (+/- 6,715)
-// test d04_ex2_normal ... bench:     197,090 ns/iter (+/- 6,836)
-// test d04_input      ... bench:     171,740 ns/iter (+/- 3,601)
+// test d04_ex1_normal ... bench:      65,593 ns/iter (+/- 4,572)
+// test d04_ex2_normal ... bench:     191,875 ns/iter (+/- 6,657)
+// test d04_input      ... bench:     150,784 ns/iter (+/- 22,890)

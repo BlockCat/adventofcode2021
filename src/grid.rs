@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::vector::Vector2;
 
 pub trait Grid<T>
@@ -5,10 +7,45 @@ where
     T: Clone + PartialEq + Eq + Default,
 {
     fn set(&mut self, x: usize, y: usize, value: T);
-    fn set_vec(&mut self, pos: &Vector2, value: T);
-    fn get_vec(&self, pos: &Vector2) -> Option<&T>;
+    fn set_vec(&mut self, pos: &Vector2, value: T) {
+        self.set(pos[0] as usize, pos[1] as usize, value);
+    }
+    fn get_vec(&self, pos: &Vector2) -> Option<&T> {
+        self.get(pos[0] as usize, pos[1] as usize)
+    }
     fn get(&self, x: usize, y: usize) -> Option<&T>;
+
     fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T>;
+    fn get_insert_vec_mut(&mut self, pos: &Vector2, default: T) -> &mut T;
+}
+
+#[derive(Default, PartialEq, Eq, Clone)]
+pub struct DynamicGrid<T>
+where
+    T: Clone + PartialEq + Eq + Default,
+{
+    pub map: HashMap<(usize, usize), T>,
+}
+
+impl<T> Grid<T> for DynamicGrid<T>
+where
+    T: Clone + PartialEq + Eq + Default,
+{
+    fn set(&mut self, x: usize, y: usize, value: T) {        
+        self.map.insert((x, y), value);
+    }
+
+    fn get(&self, x: usize, y: usize) -> Option<&T> {
+        self.map.get(&(x, y))
+    }
+
+    fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T> {
+        self.map.get_mut(&(x, y))
+    }
+
+    fn get_insert_vec_mut(&mut self, pos: &Vector2, default: T) -> &mut T {
+        self.map.entry((pos[0] as usize, pos[1] as usize)).or_insert(default)
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Hash)]
@@ -47,6 +84,10 @@ where
 
     fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T> {
         self.grid.get_mut(x + y * self.width)
+    }
+
+    fn get_insert_vec_mut(&mut self, pos: &Vector2, _: T) -> &mut T {
+        self.get_mut(pos[0] as usize, pos[1] as usize).unwrap()
     }
 }
 

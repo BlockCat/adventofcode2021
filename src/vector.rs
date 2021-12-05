@@ -25,6 +25,13 @@ impl<const N: usize> VectorN<N> {
     pub fn new(value: [isize; N]) -> Self {
         VectorN { value }
     }
+
+    pub fn abs(&self) -> Self {
+        let mut d = self.clone();
+        d.value.iter_mut().for_each(|x| *x = x.abs());
+
+        d
+    }
 }
 
 impl<const N: usize> Index<usize> for VectorN<N> {
