@@ -25,3 +25,8 @@ fn d06_ex2_normal(b: &mut Bencher) {
 // test d06_ex1_normal ... bench:      44,315 ns/iter (+/- 385)
 // test d06_ex2_normal ... bench:     133,492 ns/iter (+/- 1,350)
 // test d06_input      ... bench:       5,539 ns/iter (+/- 794)
+
+// Version 2
+// test d06_ex1_normal ... bench:         341 ns/iter (+/- 9)
+// test d06_ex2_normal ... bench:         371 ns/iter (+/- 6)
+// test d06_input      ... bench:       5,276 ns/iter (+/- 108)
