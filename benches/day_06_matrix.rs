@@ -21,6 +21,12 @@ fn d06_ex2_matrix(b: &mut Bencher) {
     b.iter(|| exercise_n::<256>(&input));
 }
 
+#[bench]
+fn d06_ex3_matrix(b: &mut Bencher) {
+    let input = parse_input(include_str!("../input/day06.txt"));
+    b.iter(|| exercise_n::<100_000_000_000_000>(&input));
+}
+
 // Version 1
 // test d06_ex1_matrix ... bench:       1,975 ns/iter (+/- 25)
 // test d06_ex2_matrix ... bench:       2,504 ns/iter (+/- 374)

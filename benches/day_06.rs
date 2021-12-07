@@ -21,6 +21,12 @@ fn d06_ex2_normal(b: &mut Bencher) {
     b.iter(|| exercise_n::<256>(&input));
 }
 
+#[bench]
+fn d06_ex3_normal(b: &mut Bencher) {
+    let input = parse_input(include_str!("../input/day06.txt"));
+    b.iter(|| exercise_n::<100_000_000>(&input));
+}
+
 // Version 1
 // test d06_ex1_normal ... bench:      44,315 ns/iter (+/- 385)
 // test d06_ex2_normal ... bench:     133,492 ns/iter (+/- 1,350)

@@ -7,13 +7,14 @@ pub fn main() {
 
     println!("Ex1: {}", exercise_n::<80>(&input));
     println!("Ex2: {}", exercise_n::<256>(&input));
+    println!("Ex3: {}", exercise_n::<9000>(&input));
 }
 
 fn parse_input(input: &str) -> Input {
     input.split(',').map(|x| x.parse().unwrap()).collect()
 }
 
-fn exercise_n<const N: usize>(fishes: &Input) -> usize {
+fn exercise_n<const N: usize>(fishes: &Input) -> f64 {
     let mut group = [0f64; 9];
 
     for fish in fishes {
@@ -39,7 +40,7 @@ fn exercise_n<const N: usize>(fishes: &Input) -> usize {
 
     let group = matrix * group;
 
-    group.sum() as usize
+    group.sum()
 }
 
 // fn exercise_2(lines: &Input) -> usize {}
