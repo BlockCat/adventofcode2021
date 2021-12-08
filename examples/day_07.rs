@@ -1,7 +1,6 @@
 type Input = Vec<isize>;
 pub fn main() {
     let input = parse_input(include_str!("../input/day07.txt"));
-
     println!("Ex1: {}", exercise_1(&input));
     println!("Ex2: {}", exercise_2(&input));
 }
@@ -20,6 +19,7 @@ fn cost(input: &Input, pos: isize) -> usize {
     input.iter().map(|tar| (tar - pos).abs()).sum::<isize>() as usize
 }
 
+// f(x) = ?
 // f'(x) = \sum_{a_i} (\abs{a_i - x} + 0.5)
 //       = 0.5n - nx + \sum_{a_i} a_i
 // =>
@@ -35,10 +35,8 @@ fn exercise_2(input: &Input) -> usize {
 fn cost2(input: &Input, pos: isize) -> usize {
     input
         .iter()
-        .map(|tar| {
-            let pos = (tar - pos).abs();
-            (pos + 1) * pos
-        })
+        .map(|tar| (tar - pos).abs())
+        .map(|pos| (pos + 1) * pos)
         .sum::<isize>() as usize
         / 2
 }
