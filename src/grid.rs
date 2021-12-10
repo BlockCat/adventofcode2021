@@ -31,7 +31,7 @@ impl<T> Grid<T> for DynamicGrid<T>
 where
     T: Clone + PartialEq + Eq + Default,
 {
-    fn set(&mut self, x: usize, y: usize, value: T) {        
+    fn set(&mut self, x: usize, y: usize, value: T) {
         self.map.insert((x, y), value);
     }
 
@@ -44,7 +44,9 @@ where
     }
 
     fn get_insert_vec_mut(&mut self, pos: &Vector2, default: T) -> &mut T {
-        self.map.entry((pos[0] as usize, pos[1] as usize)).or_insert(default)
+        self.map
+            .entry((pos[0] as usize, pos[1] as usize))
+            .or_insert(default)
     }
 }
 
@@ -147,7 +149,7 @@ impl<'a, T> Iterator for GridIterator<'a, T>
 where
     T: Clone + PartialEq + Eq + Default,
 {
-    type Item = ((usize, usize), &'a T);
+    type Item = (Vector2, &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
         let val = self.grid.get(self.x, self.y);
@@ -162,7 +164,7 @@ where
                 self.y += 1;
             }
 
-            return Some(((x, y), v));
+            return Some((Vector2::new([x as isize, y as isize]), v));
         } else {
             return None;
         }

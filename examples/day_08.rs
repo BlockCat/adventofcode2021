@@ -14,31 +14,26 @@ fn parse_input(input: &str) -> Input {
 
 fn parse_line<'a>(line: &'a str) -> Line<'a> {
     let mut split1 = line.split('|');
-    let left = split1.next().unwrap();
-    let right = split1.next().unwrap();
 
-    let left = left.trim().split(' ').collect();
-    let right = right.trim().split(' ').collect();
+    let numbers = split1.next().unwrap();
+    let output = split1.next().unwrap();
 
-    Line { left, right }
+    let numbers = numbers.trim().split(' ').collect();
+    let output = output.trim().split(' ').collect();
+
+    Line { numbers, output }
 }
 
 fn exercise_1(input: &Input) -> usize {
     input
         .iter()
-        .map(|x| {
-            x.right
-                .iter()
-                .filter(|x| match x.len() {
-                    2 => true,
-                    3 => true,
-                    4 => true,
-                    7 => true,
-                    _ => false,
-                })
-                .count()
+        .flat_map(|x| {
+            x.output.iter().filter(|x| match x.len() {
+                2 | 3 | 4 | 7 => true,
+                _ => false,
+            })
         })
-        .sum()
+        .count()
 }
 
 fn exercise_2(input: &Input) -> usize {
@@ -48,18 +43,11 @@ fn exercise_2(input: &Input) -> usize {
 fn deduce_line(line: &Line) -> usize {
     let mut sieve = create_mapping();
 
-    for left in &line.left {
-        handle_unique_str(left, &mut sieve)
-    }
-    for right in &line.right {
-        handle_unique_str(right, &mut sieve)
+    for number_text in &line.numbers {
+        handle_unique_str(number_text, &mut sieve)
     }
 
-    let mut known = sieve
-        .iter()
-        .filter(|x| x.1.len() == 1)
-        .map(|x| (*x.0, *x.1.iter().next().unwrap()))
-        .collect::<HashMap<char, char>>();
+    let mut known = update_known(&sieve);
 
     let mut changed = true;
     while changed {
@@ -74,19 +62,35 @@ fn deduce_line(line: &Line) -> usize {
             }
         }
 
-        known = sieve
-            .iter()
-            .filter(|x| x.1.len() == 1)
-            .map(|x| (*x.0, *x.1.iter().next().unwrap()))
-            .collect::<HashMap<char, char>>();
+        known = update_known(&sieve);
     }
 
-    let mut sum = str_to_number(&line.right[0], &known) * 1000;
-    sum += str_to_number(&line.right[1], &known) * 100;
-    sum += str_to_number(&line.right[2], &known) * 10;
-    sum += str_to_number(&line.right[3], &known);
+    let mut sum = str_to_number(&line.output[0], &known) * 1000;
+    sum += str_to_number(&line.output[1], &known) * 100;
+    sum += str_to_number(&line.output[2], &known) * 10;
+    sum += str_to_number(&line.output[3], &known);
 
     sum
+}
+
+fn update_known(sieve: &HashMap<char, HashSet<char>>) -> HashMap<char, char> {
+    sieve
+        .iter()
+        .filter(|x| x.1.len() == 1)
+        .map(|x| (*x.0, *x.1.iter().next().unwrap()))
+        .collect::<HashMap<char, char>>()
+}
+
+fn handle_unique_str(number_text: &str, sieve: &mut HashMap<char, HashSet<char>>) {
+    let set = number_text.chars().collect::<HashSet<_>>();
+    match number_text.len() {
+        2 => clean_char(&['F', 'C'], &set, sieve),
+        3 => clean_char(&['F', 'C', 'A'], &set, sieve),
+        4 => clean_char(&['F', 'C', 'B', 'D'], &set, sieve),
+        5 => clean_char(&['A', 'D', 'G'], &set, sieve),
+        6 => clean_char(&['A', 'B', 'F', 'G'], &set, sieve),
+        _ => {}
+    }
 }
 
 fn clean_char(char: &[char], set: &HashSet<char>, sieve: &mut HashMap<char, HashSet<char>>) {
@@ -94,29 +98,6 @@ fn clean_char(char: &[char], set: &HashSet<char>, sieve: &mut HashMap<char, Hash
         sieve
             .entry(*lane)
             .and_modify(|a| *a = a.intersection(set).cloned().collect());
-    }
-}
-
-fn handle_unique_str(left: &str, sieve: &mut HashMap<char, HashSet<char>>) {
-    let set = left.chars().collect::<HashSet<_>>();
-    match left.len() {
-        2 => {
-            clean_char(&['F', 'C'], &set, sieve);
-        }
-        3 => {
-            clean_char(&['F', 'C', 'A'], &set, sieve);
-        }
-        4 => {
-            clean_char(&['F', 'C', 'B', 'D'], &set, sieve);
-        }
-        7 => {}
-        5 => {
-            clean_char(&['A', 'D', 'G'], &set, sieve);
-        }
-        6 => {
-            clean_char(&['A', 'B', 'F', 'G'], &set, sieve);
-        }
-        _ => {}
     }
 }
 
@@ -136,6 +117,7 @@ fn str_to_number(l: &str, known: &HashMap<char, char>) -> usize {
 
     match l.len() {
         5 => match (c, f) {
+            // 2, 3, 5
             (true, true) => return 3,
             (true, false) => return 2,
             (false, true) => return 5,
@@ -143,39 +125,23 @@ fn str_to_number(l: &str, known: &HashMap<char, char>) -> usize {
         },
         6 => {
             // 0 , 6, 9
-            if e && d {
-                return 6;
-            }
-            if c && d {
-                return 9;
-            }
-            if !d {
-                return 0;
+            match (e, d) {
+                (true, true) => return 6,
+                (true, false) => return 0,
+                (false, true) => return 9,
+                (false, false) => unreachable!(),
             }
         }
         _ => unreachable!(),
     }
-
-    unreachable!("{}: {:?}", l, known)
 }
 
 fn create_mapping() -> HashMap<char, HashSet<char>> {
-    let all_set: HashSet<char> = {
-        let mut a = HashSet::new();
-        for c in 'a'..='g' {
-            a.insert(c);
-        }
-        a
-    };
-
-    let mut sieve = HashMap::new();
-    for ch in 'A'..='G' {
-        sieve.insert(ch, all_set.clone());
-    }
-    sieve
+    let all_set = HashSet::from_iter('a'..='g');
+    ('A'..='G').map(|x| (x, all_set.clone())).collect()
 }
 
 struct Line<'a> {
-    left: Vec<&'a str>,
-    right: Vec<&'a str>,
+    numbers: Vec<&'a str>,
+    output: Vec<&'a str>,
 }
