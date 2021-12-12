@@ -16,6 +16,7 @@ where
     fn get(&self, x: usize, y: usize) -> Option<&T>;
 
     fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T>;
+    fn get_mut_vec(&mut self, pos: &Vector2) -> Option<&mut T>;
     fn get_insert_vec_mut(&mut self, pos: &Vector2, default: T) -> &mut T;
 }
 
@@ -43,6 +44,10 @@ where
         self.map.get_mut(&(x, y))
     }
 
+    fn get_mut_vec(&mut self, pos: &Vector2) -> Option<&mut T> {
+        unimplemented!()
+    }
+
     fn get_insert_vec_mut(&mut self, pos: &Vector2, default: T) -> &mut T {
         self.map
             .entry((pos[0] as usize, pos[1] as usize))
@@ -50,7 +55,7 @@ where
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct StaticGrid<T>
 where
     T: Clone + PartialEq + Eq + Default,
@@ -85,7 +90,14 @@ where
     }
 
     fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut T> {
-        self.grid.get_mut(x + y * self.width)
+        if (0..self.width).contains(&x) && (0..self.height).contains(&y) {
+            self.grid.get_mut(x + y * self.width)
+        } else {
+            None
+        }
+    }
+    fn get_mut_vec(&mut self, pos: &Vector2) -> Option<&mut T> {
+       self.get_mut(pos[0] as usize, pos[1] as usize)
     }
 
     fn get_insert_vec_mut(&mut self, pos: &Vector2, _: T) -> &mut T {
