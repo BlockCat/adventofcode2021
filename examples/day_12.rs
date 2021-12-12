@@ -1,116 +1,194 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-type Input = Vec<(Cave, Cave)>;
+type Invoer = (Vec<(Grot, Grot)>, u8);
 
 pub fn main() {
-    let input = parse_input(include_str!("../input/day12.txt"));
-    println!("Ex1: {}", exercise_1(&input));
-    println!("Ex2: {}", exercise_2(&input));
+    let invoer = vertaal_invoer(include_str!("../input/test.txt"));
+    let start = std::time::SystemTime::now();
+
+    println!("{:?}", invoer);
+
+    println!("O1: {}", oefening_1(&invoer));
+    let end = std::time::SystemTime::now();    
+    let dur = end.duration_since(start).unwrap();
+
+    println!("Took: {:?}", dur);
+
+    let start = std::time::SystemTime::now();
+    println!("O2: {}", oefening_2(&invoer));
+    let end = std::time::SystemTime::now();    
+    let dur = end.duration_since(start).unwrap();
+    
+    println!("Took: {:?}", dur);
 }
 
-fn parse_input(input: &str) -> Input {
-    input
+fn vertaal_invoer(invoer: &str) -> Invoer {
+    let matches = invoer
         .lines()
         .map(|line| {
             let mut split = line.split('-');
-            let left = split.next().unwrap();
-            let right = split.next().unwrap();
-            (Cave::from(left), Cave::from(right))
+            let links = split.next().unwrap();
+            let rechts = split.next().unwrap();
+            (links, rechts)
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    let mut small_caves: HashSet<&str> = matches
+        .iter()
+        .flat_map(|(l, r)| [*l, *r])
+        .filter(|x| x.to_uppercase() != *x)
+        .collect::<HashSet<_>>();
+    let grote_caves: HashSet<&str> = matches
+        .iter()
+        .flat_map(|(l, r)| [*l, *r])
+        .filter(|x| x.to_uppercase() == *x)
+        .collect::<HashSet<_>>();
+
+    let start_id = 0;
+    let end_id = (small_caves.len() - 1) as u8;
+
+    small_caves.remove("start");
+    small_caves.remove("end");
+
+    let mut kleine_mapping: HashMap<&str, u8> = small_caves
+        .into_iter()
+        .enumerate()
+        .map(|(a, b)| (b, a as u8 + 1u8))
+        .collect();
+    let grote_mapping: HashMap<&str, u8> = grote_caves
+        .into_iter()
+        .enumerate()
+        .map(|(a, b)| (b, a as u8))
+        .collect();
+
+    kleine_mapping.insert("start", start_id);
+    kleine_mapping.insert("end", end_id);
+
+    println!("{:?}", kleine_mapping);
+    println!("{:?}", grote_mapping);
+
+    (
+        matches
+            .iter()
+            .map(|(links, rechts)| {
+                let links = if links.to_uppercase() == *links {
+                    Grot::Groot(grote_mapping[links])
+                } else {
+                    Grot::Klein(kleine_mapping[links])
+                };
+                let rechts = if rechts.to_uppercase() == *rechts {
+                    Grot::Groot(grote_mapping[rechts])
+                } else {
+                    Grot::Klein(kleine_mapping[rechts])
+                };
+
+                (links, rechts)
+            })
+            .collect(),
+        end_id,
+    )
 }
 
-fn exercise_1(input: &Input) -> usize {
-    let connections = find_connections(input);
-    let mut queue: VecDeque<(Cave, HashSet<String>)> = VecDeque::new();
-    queue.push_front((
-        Cave::Small(String::from("start")),
-        HashSet::from([String::from("start")]),
-    ));
+fn oefening_1((invoer, end_id): &Invoer) -> usize {
+    let connecties = vindt_verbindingen(invoer);
+    let mut rij: VecDeque<(Grot, BitSet)> = VecDeque::new();
+    rij.push_front((Grot::Klein(0), BitSet::default()));
 
-    let mut reached = 0;
+    let mut gezien = 0;
 
-    while let Some((cave, visited)) = queue.pop_front() {
-        for neighbour in &connections[&cave] {
-            match neighbour {
-                Cave::Big(_) => queue.push_front((neighbour.clone(), visited.clone())),
-                Cave::Small(c) => {
-                    if c == "end" {
-                        reached += 1;
-                    } else if !visited.contains(c) {
-                        let mut visited = visited.clone();
-                        visited.insert(c.clone());
-                        queue.push_front((neighbour.clone(), visited));
+    while let Some((grot, bezocht)) = rij.pop_front() {
+        for buurman in &connecties[&grot] {
+            match buurman {
+                Grot::Groot(_) => rij.push_front((buurman.clone(), bezocht.clone())),
+                Grot::Klein(c) => {
+                    if c == end_id {
+                        gezien += 1;
+                    } else if !bezocht.get(*c) {
+                        let mut bezocht = bezocht.clone();
+                        bezocht.set(*c);
+                        rij.push_front((buurman.clone(), bezocht));
                     }
                 }
             }
         }
     }
 
-    reached
+    gezien
 }
 
-fn exercise_2(input: &Input) -> usize {
-    let connections = find_connections(input);
-    let mut reached = 0;
+fn oefening_2((invoer, end_id): &Invoer) -> usize {
+    let connecties = vindt_verbindingen(invoer);
+    let mut rij: VecDeque<(Grot, BitSet)> = VecDeque::new();
+    rij.push_front((Grot::Klein(0), BitSet::default()));
 
-    let mut queue = VecDeque::new();
-    queue.push_front((
-        Cave::Small(String::from("start")),
-        HashSet::from([String::from("start")]),
-        false,
-    ));
-    while let Some((cave, visited, visited_twice)) = queue.pop_front() {
-        for neighbour in &*connections[&cave] {
-            match neighbour {
-                Cave::Big(_) => {
-                    queue.push_front((neighbour.clone(), visited.clone(), visited_twice))
-                }
-                Cave::Small(c) => {
-                    if c == "end" {
-                        reached += 1;
-                    } else if visited.contains(c) && !visited_twice && c != "start" {
-                        queue.push_front((neighbour.clone(), visited.clone(), true));
-                    } else if !visited.contains(c) {
-                        let mut visited = visited.clone();
-                        visited.insert(c.clone());
-                        queue.push_front((neighbour.clone(), visited, visited_twice));
+    let mut gezien = 0;
+
+    while let Some((grot, bezocht)) = rij.pop_front() {
+        for buurman in &connecties[&grot] {
+            match buurman {
+                Grot::Groot(_) => rij.push_front((buurman.clone(), bezocht.clone())),
+                Grot::Klein(c) => {
+                    if c == end_id {
+                        gezien += 1;
+                    } else if !bezocht.is_bezocht() && *c != 0 && bezocht.get(*c) {
+                        let mut bezocht = bezocht.clone();
+                        bezocht.set_bezocht();
+                        rij.push_front((buurman.clone(), bezocht));
+                    } else if !bezocht.get(*c) {
+                        let mut bezocht = bezocht.clone();
+                        bezocht.set(*c);
+                        rij.push_front((buurman.clone(), bezocht));
                     }
                 }
             }
         }
     }
 
-    reached
+    gezien
 }
 
-fn find_connections(input: &Vec<(Cave, Cave)>) -> HashMap<Cave, Vec<Cave>> {
-    let mut connections: HashMap<Cave, Vec<Cave>> = HashMap::new();
-    for (left, right) in input {
-        connections
-            .entry(left.clone())
+fn vindt_verbindingen(invoer: &Vec<(Grot, Grot)>) -> HashMap<Grot, Vec<Grot>> {
+    let mut connecties: HashMap<Grot, Vec<Grot>> = HashMap::new();
+    for (links, rechts) in invoer {
+        connecties
+            .entry(links.clone())
             .or_insert(Vec::new())
-            .push(right.clone());
-        connections
-            .entry(right.clone())
+            .push(rechts.clone());
+        connecties
+            .entry(rechts.clone())
             .or_insert(Vec::new())
-            .push(left.clone());
+            .push(links.clone());
     }
-    connections
+    connecties
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-enum Cave {
-    Big(String),
-    Small(String),
+enum Grot {
+    Groot(u8),
+    Klein(u8),
 }
 
-impl From<&'_ str> for Cave {
-    fn from(text: &'_ str) -> Self {
-        if text.to_uppercase() == text {
-            Cave::Big(text.to_string())
-        } else {
-            Cave::Small(text.to_string())
-        }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct BitSet(u64);
+
+impl BitSet {
+    fn get(&self, index: u8) -> bool {
+        (self.0 >> index & 1) == 1
+    }
+    fn set(&mut self, index: u8) {
+        self.0 |= 1 << index;
+    }
+
+    fn is_bezocht(&self) -> bool {
+        self.get(63)
+    }
+    fn set_bezocht(&mut self) {
+        self.set(63)
+    }
+}
+
+impl Default for BitSet {
+    fn default() -> Self {
+        Self(1)
     }
 }
