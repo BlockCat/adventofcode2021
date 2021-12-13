@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 nalgebra = "0.29.0"
 rayon = "1.5.1"
+dashmap = "5.0.0"
