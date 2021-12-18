@@ -3,8 +3,8 @@ use aoc_2021::vector::Vector2;
 type Input = ((isize, isize), (isize, isize));
 
 pub fn main() {
-    let input = ((117, 7310), (-9546, -89));
-    // let input = ((281, 311), (-74, -54));
+    // let input = ((117, 7310), (-9546, -89));
+    let input = ((281, 311), (-74, -54));
 
     println!("Ex1: {:?}", exercise_1(&input));
     println!("Ex2: {:?}", exercise_2(&input));
