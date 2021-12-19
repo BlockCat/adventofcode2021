@@ -32,6 +32,10 @@ impl<const N: usize> VectorN<N> {
 
         d
     }
+
+    pub fn zero() -> Self {
+        VectorN { value: [0; N] }
+    }
 }
 
 impl<const N: usize> Index<usize> for VectorN<N> {
