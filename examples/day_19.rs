@@ -1,148 +1,141 @@
 use aoc_2021::vector::Vector3;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 type Input = Vec<Scanner>;
 
+const MATCHING_SIZE: usize = 12;
 pub fn main() {
-    let input = parse_input(include_str!("../input/test.txt"));
+    let input = parse_input(include_str!("../input/day19.txt"));
 
-    let rots = all_rotations(Vector3::new([1, 2, 3]))
-        .into_iter()
-        .collect::<HashSet<_>>();
-    assert_eq!(24, rots.len());
+    let duration = aoc_2021::stopwatch(|| {
+        println!("Ex1: {:?}", exercise_12(&input));
+    });
 
-    println!("Ex1: {}", exercise_1(&input));
-    // println!("Ex2: {}", exercise_2(&input));
+    println!("duration: {:?}", duration);
 }
 
-// 464 too high
+fn exercise_12(scanners: &Input) -> (usize, usize) {
+    // Create a growing space from the first scanner
+    let mut growth = GrowResult::new(&scanners[0]);
 
-fn exercise_1(scanners: &Input) -> usize {
-    let mut results = scanners
-        .iter()
-        .enumerate()
-        .map(|(i, s)| GrowResult::from_scanner(i, s))
-        .collect::<Vec<_>>();
+    let mut to_search = scanners[1..].iter().collect::<VecDeque<_>>();
 
-    grow_from(results)
-}
-
-fn grow_from(results: Vec<GrowResult>) -> usize {
-    let mut matches = HashMap::new();
-    let mut connections = HashMap::new();
-
-    for a in 0..results.len() {
-        for b in 0..results.len() {
-            if a <= b {
-                continue;
-            }
-            if let Some(offset) = combine_pair(&results[a], &results[b]) {
-                println!("match: {} - {}", a, b);
-                matches.insert((a, b), offset);
-                connections.entry(a).or_insert_with(|| Vec::new()).push(b);
-                connections.entry(b).or_insert_with(|| Vec::new()).push(a);
-
-                let data = combine_pair(&results[b], &results[a]).unwrap();
-                matches.insert((b, a), data);
-            }
+    while let Some(x) = to_search.pop_front() {
+        // Try adding a new scanner to the space, if that's not possible add it back to the queue so it can try again
+        if !growth.try_add(x) {
+            to_search.push_back(x);
         }
     }
 
-    let mut growth = results[0].clone();
-    let mut queue = VecDeque::new();
-    let mut visited = HashSet::new();
-    queue.push_front((0usize, Vector3::zero()));
-
-    while let Some((node, offset)) = queue.pop_front() {
-        if !visited.insert(node) {
-            continue;
-        }
-
-        // Collect pairs for next round
-        for child in &connections[&node] {
-            // There is a pair
-            if let Some((child_grow, child_offset)) = matches.get(&(node, *child)) {
-                queue.push_front((*child, offset + child_offset.offset));
-            }
-        }
-
-        growth = combine_pair(&growth, &results[node]).unwrap().0;
-    }
-
-    let max = growth
-        .scanners
-        .values()
-        .map(|(_, pos)| {
-            growth
-                .scanners
-                .values()
-                .map(|(_, pos2)| Vector3::manhattan(pos, pos2))
-                .max()
-                .unwrap()
-        })
-        .max()
-        .unwrap();
-
-    println!("max: {}", max);
-
-    growth.space.len()
-}
-
-fn combine_pair(a: &GrowResult, b: &GrowResult) -> Option<(GrowResult, DirectionMatchInfo)> {
-    let rotation_space = b.rotation_space();
-
-    let found = (0..24)
-        .filter_map(|x| is_directional_match(&a.space, &rotation_space[x]).map(|v| (x, v)))
-        .next();
-
-    if let Some((rot, info)) = found {
-        let mut new_scanners = a.scanners.clone();
-        for (bscan, (dir, loc)) in &b.scanners {
-            let position = info.source_beacon; // go from scanner 0 to beacon
-            let position = position - info.target_beacon;
-            new_scanners.insert(*bscan, (*dir, position));
-        }
-
-        let mut new_space = a.space.clone();
-        for bvecs in &rotation_space[rot] {
-            new_space.insert(info.offset + *bvecs);
-        }
-
-        Some((
-            GrowResult {
-                scanners: new_scanners,
-                space: new_space,
-            },
-            info,
-        ))
-    } else {
-        None
-    }
+    (growth.different_beacons(), growth.max_scanner_distance())
 }
 
 struct DirectionMatchInfo {
-    offset: Vector3,
     source_beacon: Vector3,
     target_beacon: Vector3,
 }
 
+#[derive(Debug, Clone, Default)]
+struct BeaconSet(HashSet<Vector3>);
+
+impl BeaconSet {
+    fn find_match(&self, beacons: &[BeaconSet]) -> Option<(usize, Vector3)> {
+        let (rotation, info) = (0..24)
+            .par_bridge()
+            .find_map_any(|r| is_directional_match(self, &beacons[r]).map(|x| (r, x)))?;
+
+        Some((rotation, info.source_beacon - info.target_beacon))
+    }
+
+    fn add_space(&mut self, offset: Vector3, space: &BeaconSet) {
+        for beacon in &space.0 {
+            self.0.insert(offset + *beacon);
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Scanner {
+    id: usize,
+    beacons: Vec<BeaconSet>,
+}
+
+#[derive(Debug, Clone)]
+struct GrowResult {
+    scanners: HashMap<usize, (Vector3, BeaconSet)>,
+}
+
+impl GrowResult {
+    pub fn new(scanner: &Scanner) -> Self {
+        let mut scanners = HashMap::new();
+        scanners.insert(scanner.id, (Vector3::zero(), scanner.beacons[0].clone()));
+        GrowResult { scanners }
+    }
+    pub fn try_add(&mut self, scanner: &Scanner) -> bool {
+        let match_result = self
+            .scanners
+            .values()
+            .par_bridge()
+            .find_map_any(|(pos, space)| {
+                space
+                    .find_match(&scanner.beacons)
+                    .map(|result| (*pos, result.0, result.1))
+            });
+
+        if let Some((pos, rotation, relative_scanner_position)) = match_result {
+            self.scanners.insert(
+                scanner.id,
+                (
+                    pos + relative_scanner_position,
+                    scanner.beacons[rotation].clone(),
+                ),
+            );
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn different_beacons(&self) -> usize {
+        let mut set = BeaconSet::default();
+        for (pos, space) in self.scanners.values() {
+            set.add_space(*pos, space);
+        }
+        set.0.len()
+    }
+
+    pub fn max_scanner_distance(&self) -> usize {
+        self.scanners
+            .values()
+            .map(|(a, _)| {
+                self.scanners
+                    .values()
+                    .map(|(b, _)| Vector3::manhattan(a, b))
+                    .max()
+                    .unwrap()
+            })
+            .max()
+            .unwrap()
+    }
+}
+
 fn is_directional_match(
-    space: &HashSet<Vector3>,
-    beacon_rotations: &Vec<Vector3>,
+    space: &BeaconSet,
+    beacon_rotations: &BeaconSet,
 ) -> Option<DirectionMatchInfo> {
-    for source_beacon in space {
-        for matched_beacon in beacon_rotations {
+    for source_beacon in &space.0 {
+        for matched_beacon in &beacon_rotations.0 {
             let offset = *source_beacon - *matched_beacon;
             let matching = beacon_rotations
-                .par_iter()
-                .filter(|x| space.contains(&(**x + offset)))
+                .0
+                .iter()
+                .filter(|x| space.0.contains(&(**x + offset)))
+                .take(MATCHING_SIZE)
                 .count();
 
-            if matching >= 12 {
-                println!("Matches: {}", matching);
+            if matching >= MATCHING_SIZE {
                 return Some(DirectionMatchInfo {
-                    offset,
                     source_beacon: *source_beacon,
                     target_beacon: *matched_beacon,
                 });
@@ -192,47 +185,12 @@ fn z_rotations(a: Vector3) -> [Vector3; 4] {
     [a, b, c, d]
 }
 
-fn exercise_2(input: &Input) -> usize {
-    0
-}
-
-#[derive(Debug, Clone)]
-struct Scanner {
-    beacons: Vec<Vector3>,
-}
-
-#[derive(Debug, Clone)]
-struct GrowResult {
-    space: HashSet<Vector3>,
-    scanners: HashMap<usize, (usize, Vector3)>,
-}
-
-impl GrowResult {
-    pub fn from_scanner(index: usize, scanner: &Scanner) -> GrowResult {
-        let space = scanner.beacons.iter().cloned().collect();
-        let mut scanners = HashMap::new();
-        scanners.insert(index, (0, Vector3::new([0, 0, 0])));
-        GrowResult { space, scanners }
-    }
-
-    pub fn rotation_space(&self) -> Vec<Vec<Vector3>> {
-        let mut result = vec![vec![]; 24];
-
-        for beacon in &self.space {
-            for (rotation, vec) in all_rotations(*beacon).iter().enumerate() {
-                result[rotation].push(*vec);
-            }
-        }
-
-        result
-    }
-}
-
 fn parse_input(input: &str) -> Input {
     let mut scanners = Vec::new();
     let mut lines = input.lines();
+    let mut counter = 0;
 
-    while let Some(scanner_line) = lines.next() {
+    while let Some(_) = lines.next() {
         let beacons = lines
             .by_ref()
             .take_while(|x| !x.is_empty())
@@ -244,9 +202,41 @@ fn parse_input(input: &str) -> Input {
 
                 Vector3::new([x, y, z])
             })
-            .collect();
-        scanners.push(Scanner { beacons });
+            .collect::<Vec<_>>();
+
+        let mut rekt = vec![BeaconSet::default(); 24];
+
+        for beacon in beacons {
+            let rotations = all_rotations(beacon);
+            for rotation in 0..24 {
+                rekt[rotation].0.insert(rotations[rotation]);
+            }
+        }
+
+        scanners.push(Scanner {
+            id: counter,
+            beacons: rekt,
+        });
+
+        counter += 1;
     }
 
     scanners
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use aoc_2021::vector::Vector3;
+
+    use crate::all_rotations;
+
+    #[test]
+    fn d19_test_rotations() {
+        let rots = all_rotations(Vector3::new([1, 2, 3]))
+            .into_iter()
+            .collect::<HashSet<_>>();
+        assert_eq!(24, rots.len());
+    }
 }
