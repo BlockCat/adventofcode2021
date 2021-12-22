@@ -20,4 +20,4 @@ fn exercise_1(input: &Input) -> usize {
 
 fn exercise_2(input: &Input) -> usize {
     0     
-}
+}>
