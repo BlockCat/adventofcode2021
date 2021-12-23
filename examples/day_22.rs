@@ -1,5 +1,5 @@
 use aoc_2021::{stopwatch, vector::Vector3};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, BinaryHeap};
 
 type Input = Vec<Cuboid>;
 
@@ -49,7 +49,7 @@ enum SweepPointEvent {
 }
 
 pub fn main() {
-    let input = parse_input(include_str!("../input/day22.txt"));
+    let input = parse_input(include_str!("../input/test.txt"));
     println!(
         "e1: {:?}",
         stopwatch(|| {
@@ -354,7 +354,7 @@ impl SweepPointInfo {
         self.map.insert(id, (id, on));
     }
 
-    fn remove(&mut self, id: usize) {
+    fn remove(&mut self, id: usize) {        
         self.map.remove(&id);
     }
 }
