@@ -68,7 +68,7 @@ fn iteration(prev: StaticGrid<usize>) -> (usize, StaticGrid<usize>) {
 
     for y in 0..prev.height {
         for x in 0..prev.width {
-            let val = cur.get_mut(x, y).unwrap();
+            let val = cur.get_mut(x as isize, y as isize).unwrap();
             *val += 1;
             if *val > 9 {
                 handle.push_front(Vector2::new([x as isize, y as isize]));

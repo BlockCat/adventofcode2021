@@ -1,113 +1,119 @@
-use std::str::FromStr;
+use std::{str::FromStr, fmt::Display};
 
-type Input = Vec<usize>;
+use aoc_2021::{grid::{StaticGrid, Grid}, vector::Vector2};
+
+type Input = StaticGrid<Direction>;
 
 pub fn main() {
-    let input = parse_input(include_str!("../input/test.txt"));
+    let input = parse_input(include_str!("../input/day25.txt"));
     println!("Ex1: {}", exercise_1(&input));
-    println!("Ex2: {}", exercise_2(&input));
 }
 
 fn parse_input(input: &str) -> Input {
-    input.lines().map(parse_line).collect()
+    StaticGrid::from_vec(input.lines().map(parse_line).collect())
 }
 
-fn parse_line(line: &str) -> usize {
-    
+fn parse_line(line: &str) -> Vec<Direction> {
+    line.chars()
+        .map(|c| match c {
+            '>' => Direction::East,
+            'v' => Direction::South,
+            '.' => Direction::Empty,
+            _ => unreachable!(),
+        })
+        .collect()
 }
 
 fn exercise_1(input: &Input) -> usize {
-    0
-}
+    let mut grid = input.clone();
 
-fn exercise_2(input: &Input) -> usize {
-    0
-}
+    print(&grid);
 
-enum Instruction {
-    Input(u8),
-    Add(u8, Val),
-    Mul(u8, Val),
-    Div(u8, Val),
-    Mod(u8, Val),
-    Eql(u8, Val),
-}
+    for i in 1.. {
+        let mut sum = 0;
 
-impl Instruction {
-    fn execute(&self, registry: &mut [isize], number: &[u8; 14], index: &mut usize) {
-        match self {
-            Instruction::Input(a) => {
-                registry[*a as usize] = number[*index] as isize;
-                *index += 1;
-            }
-            Instruction::Add(a, b) => registry[*a as usize] += b.value(registry),
-            Instruction::Mul(a, b) => registry[*a as usize] *= b.value(registry),
-            Instruction::Div(a, b) => registry[*a as usize] /= b.value(registry),
-            Instruction::Mod(a, b) => registry[*a as usize] %= b.value(registry),
-            Instruction::Eql(a, b) => {
-                registry[*a as usize] = isize::from(registry[*a as usize] == b.value(&registry))
-            }
+        let (a, moved) = step_east(grid);
+        let (a, moved2) = step_south(a);
+        grid = a;
+
+        // print(&grid);
+
+        sum += moved;
+        sum += moved2;
+        // panic!();
+        if sum == 0 {
+            return i;
         }
     }
+
+    unreachable!()
 }
 
-impl FromStr for Instruction {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.split(' ');
-        match s.next().unwrap() {
-            "inp" => Ok(Instruction::Input(
-                s.next().unwrap().chars().next().unwrap() as u8 - 'w' as u8,
-            )),
-            "add" => Ok(Instruction::Add(
-                s.next().unwrap().chars().next().unwrap() as u8 - 'w' as u8,
-                s.next().unwrap().parse().unwrap(),
-            )),
-            "mul" => Ok(Instruction::Mul(
-                s.next().unwrap().chars().next().unwrap() as u8 - 'w' as u8,
-                s.next().unwrap().parse().unwrap(),
-            )),
-            "div" => Ok(Instruction::Div(
-                s.next().unwrap().chars().next().unwrap() as u8 - 'w' as u8,
-                s.next().unwrap().parse().unwrap(),
-            )),
-            "mod" => Ok(Instruction::Mod(
-                s.next().unwrap().chars().next().unwrap() as u8 - 'w' as u8,
-                s.next().unwrap().parse().unwrap(),
-            )),
-            "eql" => Ok(Instruction::Eql(
-                s.next().unwrap().chars().next().unwrap() as u8 - 'w' as u8,
-                s.next().unwrap().parse().unwrap(),
-            )),
-            _ => Err(()),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Val {
-    Registry(u8),
-    Value(i16),
-}
-
-impl Val {
-    fn value(self, registry: &[isize]) -> isize {
-        match self {
-            Val::Registry(a) => registry[a as usize],
-            Val::Value(v) => v as isize,
-        }
-    }
-}
-
-impl FromStr for Val {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(d) = s.parse() {
-            Ok(Val::Value(d))
+fn step_east(static_grid: StaticGrid<Direction>) -> (StaticGrid<Direction>, usize) {
+    let mut new_grid = static_grid.clone();
+    let mut moved = 0;
+    // Handle east
+    for (pos, _) in static_grid.iter().filter(|a| a.1 == &Direction::East) {
+        let npos = if pos[0] as usize == static_grid.width - 1 {
+            Vector2::new([0, pos[1]])
         } else {
-            Ok(Val::Registry(s.chars().next().unwrap() as u8 - 'w' as u8))
+            pos + Vector2::new([1, 0])
+        };
+        if static_grid.get_vec(&npos) == Some(&Direction::Empty) {
+            new_grid.set_vec(&npos, Direction::East);
+            new_grid.set_vec(&pos, Direction::Empty);
+            moved += 1;
         }
     }
+
+    (new_grid, moved)
+}
+
+fn step_south(old_grid: StaticGrid<Direction>) -> (StaticGrid<Direction>, usize) {
+    let mut new_grid = old_grid.clone();
+    let mut moved = 0;
+    // Handle east
+    for (opos, _) in old_grid.iter().filter(|a| a.1 == &Direction::South) {
+        let npos = if opos[1] as usize == old_grid.height - 1 {
+            Vector2::new([opos[0], 0])
+        } else {
+            opos + Vector2::new([0, 1])
+        };
+        if old_grid.get_vec(&npos) == Some(&Direction::Empty) {
+            new_grid.set_vec(&npos, Direction::South);
+            new_grid.set_vec(&opos, Direction::Empty);
+            moved += 1;
+            
+        }
+    }
+
+    (new_grid, moved)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum Direction {
+    Empty,
+    East,
+    South,
+}
+
+impl Default for Direction {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+fn print(grid: &StaticGrid<Direction>) {
+    for y in 0..grid.height {
+        for x in 0..grid.width {
+            let c = match grid.get(x as isize, y as isize).unwrap() {
+                Direction::Empty => '.',
+                Direction::East => '>',
+                Direction::South => 'v',
+            };
+            print!("{}", c);
+        }
+        println!();
+    }
+    println!()
 }
